@@ -1,0 +1,26 @@
+{
+  "name": "gponty/symfony-monday-api-bundle",
+  "description": "Service to use api Monday.com in Symfony",
+  "type": "symfony-bundle",
+  "require": {
+    "php": ">=8.1",
+    "symfony/framework-bundle": "~6.0"
+  },
+  "keywords": ["symfony", "monday", "api", "bundle"],
+  "homepage": "https://github.com/gponty/symfony-monday-api",
+  "autoload": {
+    "psr-4": {
+      "Gponty\\MondayBundle\\": "src/"
+    }
+  },
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Guillaume Ponty",
+      "email": "g.ponty@dev-web.io"
+    }
+  ],
+  "require-dev": {
+    "friendsofphp/php-cs-fixer": "^3.17"
+  }
+}
