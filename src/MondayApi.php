@@ -1,45 +1,54 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace Gponty\MondayBundle;
 
 class MondayApi
 {
-    public function __construct(
-        private readonly string $mondayApiKey)
+    public function __construct(private readonly string $mondayApiKey)
     {
-
     }
 
-    public function showCoucou(){
-        dump('coucou');
-        dump($this->mondayApiKey);
-    }
-
-    public function makeQuery($query)
+    public function request(string $query): bool|array
     {
-
-        dump($this->mondayApiKey);
-
         $apiUrl = 'https://api.monday.com/v2';
-        $headers = ['Content-Type: application/json', 'Authorization: '.$this->mondayApiKey];
+        $headers = [
+            'Content-Type: application/json',
+            'User-Agent: Github.com/symfony-monday-api',
+            'Authorization: '.$this->mondayApiKey,
+        ];
 
-        $data = file_get_contents($apiUrl, false, stream_context_create([
+        $data = \file_get_contents($apiUrl, false, \stream_context_create([
             'http' => [
                 'method' => 'POST',
                 'header' => $headers,
-                'content' => json_encode(['query' => $query]),
+                'content' => \json_encode(['query' => $query]),
             ],
         ]));
 
-        $retour = json_decode($data, true);
-        // dump($retour);
+        if (!$data) {
+            return false;
+        }
 
-        return $retour;
+        $json = \json_decode($data, true);
+        if (!\is_array($json)) {
+            return false;
+        }
+
+        if (isset($json['data'])) {
+            return $json['data'];
+        } elseif (isset($json['errors']) && \is_array($json['errors'])) {
+            return $json['errors'];
+        }
+
+        return false;
     }
 
-    public function createGroupe($tableau, $titreGroupe)
+    /**
+     * Create new group if not exists.
+     */
+    public function createGroup(int $tableau, string $titreGroupe): int|bool
     {
-        // On regarde si le groupe existe
+        // check if group already exists
         $query = '{
                       boards(ids: '.$tableau.') {
                         groups {
@@ -50,15 +59,22 @@ class MondayApi
                     }
                 ';
 
-        $responseContent = $this->makeMondayQuery($query);
+        $responseContent = $this->request($query);
+        if (false === $responseContent) {
+            return false;
+        }
+        if (!isset($responseContent['boards'][0]['groups']) || !\is_array($responseContent['boards'][0]['groups'])) {
+            return false;
+        }
+
         $idGroupe = null;
-        foreach ($responseContent['data']['boards'][0]['groups'] as $group) {
+        foreach ($responseContent['boards'][0]['groups'] as $group) {
             if ($group['title'] === $titreGroupe) {
                 $idGroupe = $group['id'];
             }
         }
 
-        // On créé le groupe si il n'existe pas
+        // create group if not exists
         if (null === $idGroupe) {
             $query = 'mutation {
                           create_group (board_id: '.$tableau.', group_name: "'.$titreGroupe.'") {
@@ -66,14 +82,20 @@ class MondayApi
                           }
                         }
                         ';
-            $responseContent = $this->makeMondayQuery($query);
-            $idGroupe = $responseContent['data']['create_group']['id'];
+            $responseContent = $this->request($query);
+            if (false === $responseContent) {
+                return false;
+            }
+            if (!isset($responseContent['create_group']['id'])) {
+                return false;
+            }
+            $idGroupe = $responseContent['create_group']['id'];
         }
 
         return $idGroupe;
     }
 
-    public function createItem(int $tableau, string $groupeId, string $nomItem, array $values)
+    public function createItem(int $tableau, string $groupeId, string $nomItem, array $values): int|bool
     {
         // On insere ou update dans Monday
         // On recuperer tous les items et groupes pour checker que l'item existe ou pas
@@ -89,8 +111,14 @@ class MondayApi
                   }
                 }
             ';
-        $responseContent = $this->makeMondayQuery($query);
-        $items = $responseContent['data']['boards'][0]['groups'][0]['items'];
+        $responseContent = $this->request($query);
+        if (false === $responseContent) {
+            return false;
+        }
+        if (!isset($responseContent['boards'][0]['groups'][0]['items']) || !\is_array($responseContent['boards'][0]['groups'][0]['items'])) {
+            return false;
+        }
+        $items = $responseContent['boards'][0]['groups'][0]['items'];
 
         // On créé les domaines qui n'existent pas
         // et on met à jour ceux qui existent
@@ -112,12 +140,21 @@ class MondayApi
                               }
                             }
                         ';
-            $data = $this->makeMondayQuery($query);
-            $itemId = $data['data']['create_item']['id'];
+            $data = $this->request($query);
+            if (false === $data) {
+                return false;
+            }
+            if (!isset($data['create_item']['id'])) {
+                return false;
+            }
+            $itemId = $data['create_item']['id'];
         }
 
         // On met à jour
-        $json = addslashes(json_encode($values));
+        $json = $this->encodeValueMutation($values);
+        if (false === $json) {
+            return false;
+        }
 
         $query = 'mutation {
                           change_multiple_column_values(item_id: '.$itemId.', board_id: '.$tableau.', column_values: "'.$json.'",create_labels_if_missing: true) {
@@ -125,12 +162,12 @@ class MondayApi
                           }
                         }
                         ';
-        $this->makeMondayQuery($query);
+        $this->request($query);
 
         return $itemId;
     }
 
-    public function createSubItem(int $tableau, string $groupeId, string $itemId, string $nomSubItem, array $values)
+    public function createSubItem(int $tableau, string $groupeId, string $itemId, string $nomSubItem, array $values): int|bool
     {
         // On insere ou update dans Monday
         // On recuperer tous les subitems et groupes pour checker que le subitem existe ou pas
@@ -153,22 +190,26 @@ class MondayApi
                     }
                 }
             ';
-        $responseContent = $this->makeMondayQuery($query);
-        $subItems = $responseContent['data']['items'][0]['subitems'];
+        $responseContent = $this->request($query);
+        if (false === $responseContent) {
+            return false;
+        }
+        if (!isset($responseContent['items'][0]['subitems']) || !\is_array($responseContent['items'][0]['subitems'])) {
+            return false;
+        }
+        $subItems = $responseContent['items'][0]['subitems'];
 
         // On créé les domaines qui n'existent pas
         // et on met à jour ceux qui existent
         $trouve = false;
         $subItemId = 0;
-        if (null !== $subItems) {
-            foreach ($subItems as $subItem) {
-                if ($subItem['name'] === $nomSubItem) {
-                    $trouve = true;
-                    $subItemId = $subItem['id'];
-                    // Les subitems se trouvent dans un autre boardid
-                    $tableau = $subItem['board']['id'];
-                    break;
-                }
+        foreach ($subItems as $subItem) {
+            if ($subItem['name'] === $nomSubItem) {
+                $trouve = true;
+                $subItemId = $subItem['id'];
+                // Les subitems se trouvent dans un autre boardid
+                $tableau = $subItem['board']['id'];
+                break;
             }
         }
 
@@ -182,13 +223,23 @@ class MondayApi
                               }
                             }
                         ';
-            $data = $this->makeMondayQuery($query);
-            $subItemId = $data['data']['create_subitem']['id'];
-            $tableau = $data['data']['create_subitem']['board']['id'];
+            $data = $this->request($query);
+            if (false === $data) {
+                return false;
+            }
+            if (!isset($data['create_subitem']['id']) || !isset($data['create_subitem']['board']['id'])) {
+                return false;
+            }
+
+            $subItemId = $data['create_subitem']['id'];
+            $tableau = $data['create_subitem']['board']['id'];
         }
 
         // On met à jour
-        $json = addslashes(json_encode($values));
+        $json = $this->encodeValueMutation($values);
+        if (false === $json) {
+            return false;
+        }
 
         $query = 'mutation {
                           change_multiple_column_values( board_id: '.$tableau.', item_id: '.$subItemId.', column_values: "'.$json.'",create_labels_if_missing: true) {
@@ -196,8 +247,18 @@ class MondayApi
                           }
                         }
                         ';
-        $this->makeMondayQuery($query);
+        $this->request($query);
 
         return $subItemId;
+    }
+
+    private function encodeValueMutation(array $values): bool|string
+    {
+        $encodedValue = \json_encode($values);
+        if (!$encodedValue) {
+            return false;
+        }
+
+        return \addslashes($encodedValue);
     }
 }
