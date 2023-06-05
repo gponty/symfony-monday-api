@@ -8,6 +8,13 @@ class MondayApi
     {
     }
 
+    /**
+     * Send request to monday.com API.
+     *
+     * @param string $query GraphQL query
+     *
+     * @return bool|array Array of data or false if error
+     */
     public function request(string $query): bool|array
     {
         $apiUrl = 'https://api.monday.com/v2';
