@@ -45,12 +45,17 @@ class MondayApi
 
     /**
      * Create new group if not exists.
+     *
+     * @param int    $boardId    Monday board id
+     * @param string $groupTitle Group title
+     *
+     * @return int|bool Group id or false if error
      */
-    public function createGroup(int $tableau, string $titreGroupe): int|bool
+    public function createGroup(int $boardId, string $groupTitle): int|bool
     {
         // check if group already exists
         $query = '{
-                      boards(ids: '.$tableau.') {
+                      boards(ids: '.$boardId.') {
                         groups {
                           id
                           title
@@ -69,7 +74,7 @@ class MondayApi
 
         $idGroupe = null;
         foreach ($responseContent['boards'][0]['groups'] as $group) {
-            if ($group['title'] === $titreGroupe) {
+            if ($group['title'] === $groupTitle) {
                 $idGroupe = $group['id'];
             }
         }
@@ -77,7 +82,7 @@ class MondayApi
         // create group if not exists
         if (null === $idGroupe) {
             $query = 'mutation {
-                          create_group (board_id: '.$tableau.', group_name: "'.$titreGroupe.'") {
+                          create_group (board_id: '.$boardId.', group_name: "'.$groupTitle.'") {
                             id
                           }
                         }
@@ -95,15 +100,25 @@ class MondayApi
         return $idGroupe;
     }
 
-    public function createItem(int $tableau, string $groupeId, string $nomItem, array $values): int|bool
+    /**
+     * Create new item if not exists.
+     *
+     * @param int    $boardId    Monday board id
+     * @param string $groupId    Monday group id
+     * @param string $itemName   Item name
+     * @param array  $itemValues Item values
+     *
+     * @return int|bool Item id or false if error
+     */
+    public function createItem(int $boardId, string $groupId, string $itemName, array $itemValues): int|bool
     {
         // On insere ou update dans Monday
         // On recuperer tous les items et groupes pour checker que l'item existe ou pas
         $query = '{
-                  boards(ids: '.$tableau.') {
+                  boards(ids: '.$boardId.') {
                     id
                     name
-                    groups(ids: '.$groupeId.') {
+                    groups(ids: '.$groupId.') {
                       id
                       title
                       items {id name}
@@ -126,7 +141,7 @@ class MondayApi
         $itemId = 0;
 
         foreach ($items as $item) {
-            if ($item['name'] === $nomItem) {
+            if ($item['name'] === $itemName) {
                 $trouve = true;
                 $itemId = $item['id'];
                 break;
@@ -135,7 +150,7 @@ class MondayApi
 
         if (!$trouve) {
             $query = 'mutation {
-                              create_item(board_id: '.$tableau.', group_id: "'.$groupeId.'", item_name: "'.$nomItem.'") {
+                              create_item(board_id: '.$boardId.', group_id: "'.$groupId.'", item_name: "'.$itemName.'") {
                                 id
                               }
                             }
@@ -151,13 +166,13 @@ class MondayApi
         }
 
         // On met à jour
-        $json = $this->encodeValueMutation($values);
+        $json = $this->encodeValueMutation($itemValues);
         if (false === $json) {
             return false;
         }
 
         $query = 'mutation {
-                          change_multiple_column_values(item_id: '.$itemId.', board_id: '.$tableau.', column_values: "'.$json.'",create_labels_if_missing: true) {
+                          change_multiple_column_values(item_id: '.$itemId.', board_id: '.$boardId.', column_values: "'.$json.'",create_labels_if_missing: true) {
                             id
                           }
                         }
@@ -167,7 +182,17 @@ class MondayApi
         return $itemId;
     }
 
-    public function createSubItem(int $tableau, string $groupeId, string $itemId, string $nomSubItem, array $values): int|bool
+    /**
+     * Create new subitem if not exists.
+     *
+     * @param int    $boardId       Monday board id
+     * @param string $itemId        Monday item id
+     * @param string $subItemName   Subitem name
+     * @param array  $subItemValues Subitem values
+     *
+     * @return int|bool Subitem id or false if error
+     */
+    public function createSubItem(int $boardId, string $itemId, string $subItemName, array $subItemValues): int|bool
     {
         // On insere ou update dans Monday
         // On recuperer tous les subitems et groupes pour checker que le subitem existe ou pas
@@ -204,7 +229,7 @@ class MondayApi
         $trouve = false;
         $subItemId = 0;
         foreach ($subItems as $subItem) {
-            if ($subItem['name'] === $nomSubItem) {
+            if ($subItem['name'] === $subItemName) {
                 $trouve = true;
                 $subItemId = $subItem['id'];
                 // Les subitems se trouvent dans un autre boardid
@@ -215,7 +240,7 @@ class MondayApi
 
         if (!$trouve) {
             $query = 'mutation {
-                              create_subitem(parent_item_id: '.$itemId.', item_name: "'.$nomSubItem.'") {
+                              create_subitem(parent_item_id: '.$itemId.', item_name: "'.$subItemName.'") {
                                 id
                                 board{
                                     id
@@ -236,13 +261,13 @@ class MondayApi
         }
 
         // On met à jour
-        $json = $this->encodeValueMutation($values);
+        $json = $this->encodeValueMutation($subItemValues);
         if (false === $json) {
             return false;
         }
 
         $query = 'mutation {
-                          change_multiple_column_values( board_id: '.$tableau.', item_id: '.$subItemId.', column_values: "'.$json.'",create_labels_if_missing: true) {
+                          change_multiple_column_values( board_id: '.$boardId.', item_id: '.$subItemId.', column_values: "'.$json.'",create_labels_if_missing: true) {
                             id
                           }
                         }
@@ -252,6 +277,13 @@ class MondayApi
         return $subItemId;
     }
 
+    /**
+     * Encode array to json Monday.
+     *
+     * @param array $values Values to encode
+     *
+     * @return bool|string Json encoded or false if error
+     */
     private function encodeValueMutation(array $values): bool|string
     {
         $encodedValue = \json_encode($values);
