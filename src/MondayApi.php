@@ -56,9 +56,9 @@ class MondayApi
      * @param int    $boardId    Monday board id
      * @param string $groupTitle Group title
      *
-     * @return int|bool Group id or false if error
+     * @return string|bool Group id or false if error
      */
-    public function createGroup(int $boardId, string $groupTitle): int|bool
+    public function createGroup(int $boardId, string $groupTitle): string|bool
     {
         // check if group already exists
         $query = '{
@@ -115,9 +115,9 @@ class MondayApi
      * @param string $itemName   Item name
      * @param array  $itemValues Item values
      *
-     * @return int|bool Item id or false if error
+     * @return string|bool Item id or false if error
      */
-    public function createItem(int $boardId, string $groupId, string $itemName, array $itemValues): int|bool
+    public function createItem(int $boardId, string $groupId, string $itemName, array $itemValues): string|bool
     {
         // On insere ou update dans Monday
         // On recuperer tous les items et groupes pour checker que l'item existe ou pas
@@ -197,9 +197,9 @@ class MondayApi
      * @param string $subItemName   Subitem name
      * @param array  $subItemValues Subitem values
      *
-     * @return int|bool Subitem id or false if error
+     * @return string|bool Subitem id or false if error
      */
-    public function createSubItem(int $boardId, string $itemId, string $subItemName, array $subItemValues): int|bool
+    public function createSubItem(int $boardId, string $itemId, string $subItemName, array $subItemValues): string|bool
     {
         // On insere ou update dans Monday
         // On recuperer tous les subitems et groupes pour checker que le subitem existe ou pas
