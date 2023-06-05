@@ -11,9 +11,6 @@ class MondayBundle extends AbstractBundle
 {
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
-        dump($config);
-        dump('extension monday loaded');
-
         $container->import('../config/services.yml');
 
         $container->services()
