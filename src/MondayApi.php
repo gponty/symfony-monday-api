@@ -11,8 +11,9 @@ class MondayApi
     /**
      * Send request to monday.com API.
      *
-     * @param string $query GraphQL query
-     * @param array $variables GraphQL variables
+     * @param string $query     GraphQL query
+     * @param array  $variables GraphQL variables
+     *
      * @return bool|array Array of data or false if error
      */
     public function request(string $query, array $variables = []): bool|array
