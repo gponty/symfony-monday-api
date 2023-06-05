@@ -11,11 +11,12 @@ class MondayApi
     /**
      * Send request to monday.com API.
      *
-     * @param string $query GraphQL query
+     * @param string $query     GraphQL query
+     * @param array  $variables GraphQL variables
      *
      * @return bool|array Array of data or false if error
      */
-    public function request(string $query): bool|array
+    public function request(string $query, array $variables = []): bool|array
     {
         $apiUrl = 'https://api.monday.com/v2';
         $headers = [
@@ -28,7 +29,7 @@ class MondayApi
             'http' => [
                 'method' => 'POST',
                 'header' => $headers,
-                'content' => \json_encode(['query' => $query]),
+                'content' => \json_encode(['query' => $query, 'variables' => $variables]),
             ],
         ]));
 
