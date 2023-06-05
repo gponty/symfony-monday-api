@@ -3,7 +3,10 @@
   "description": "Service to use api Monday.com in Symfony",
   "type": "symfony-bundle",
   "require": {
-    "php": ">=8.1"
+    "php": ">=8.1",
+    "symfony/http-kernel": "^6.3",
+    "symfony/config": "^6.3",
+    "symfony/dependency-injection": "^6.3"
   },
   "keywords": ["symfony", "monday", "api", "bundle"],
   "homepage": "https://github.com/gponty/symfony-monday-api",

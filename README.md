@@ -50,7 +50,7 @@ Use the service :
                 }
               }
             }';
-    $response = $this->mondayApiService->makeQuery($query);
+    $response = $this->mondayApiService->request($query);
 ```
 
 ## License
