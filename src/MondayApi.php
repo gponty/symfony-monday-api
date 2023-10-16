@@ -4,7 +4,7 @@ namespace Gponty\MondayBundle;
 
 class MondayApi
 {
-    public function __construct(private readonly string $mondayApiKey)
+    public function __construct(private readonly string $mondayApiKey, private readonly string $mondayApiVersion)
     {
     }
 
@@ -22,6 +22,7 @@ class MondayApi
         $headers = [
             'Content-Type: application/json',
             'User-Agent: Github.com/symfony-monday-api',
+            'API-Version: '.$this->mondayApiVersion,
             'Authorization: '.$this->mondayApiKey,
         ];
 

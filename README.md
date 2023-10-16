@@ -14,6 +14,8 @@ This is a Symfony 6 Bundle helps you to use monday API v2 : https://developer.mo
 
 ``` shell
     MONDAY_API_KEY=your_token
+    MONDAY_API_VERSION=2023-07
+    
 ```
 
 **3** Add to framework config file config/packages/framework.yml
@@ -21,6 +23,7 @@ This is a Symfony 6 Bundle helps you to use monday API v2 : https://developer.mo
 ``` shell
 monday:
     api_key: '%env(MONDAY_API_KEY)%'
+    api_version: '%env(MONDAY_API_VERSION)%'
 ```
 
 
