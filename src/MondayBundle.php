@@ -16,6 +16,7 @@ class MondayBundle extends AbstractBundle
         $container->services()
             ->get(MondayApi::class)
             ->arg('$mondayApiKey', $config['api_key'])
+            ->arg('$mondayApiVersion', $config['api_version'])
         ;
     }
 
@@ -25,6 +26,7 @@ class MondayBundle extends AbstractBundle
         $definition->rootNode()
             ->children()
             ->scalarNode('api_key')->defaultValue('%env(MONDAY_API_KEY)%')->end()
+            ->scalarNode('api_version')->defaultValue('%env(MONDAY_API_VERSION)%')->end()
             ->end()
         ;
     }
