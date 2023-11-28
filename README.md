@@ -1,6 +1,7 @@
 # Symfony Monday Api
 
 This is a Symfony 6 Bundle helps you to use monday API v2 : https://developer.monday.com/apps/docs/mondayapi.
+It use version 2023-10.
 
 ## Installation
 
@@ -14,7 +15,6 @@ This is a Symfony 6 Bundle helps you to use monday API v2 : https://developer.mo
 
 ``` shell
     MONDAY_API_KEY=your_token
-    MONDAY_API_VERSION=2023-07
     
 ```
 
@@ -23,7 +23,6 @@ This is a Symfony 6 Bundle helps you to use monday API v2 : https://developer.mo
 ``` shell
 monday:
     api_key: '%env(MONDAY_API_KEY)%'
-    api_version: '%env(MONDAY_API_VERSION)%'
 ```
 
 
@@ -46,10 +45,12 @@ Use the service :
                 groups {
                   id
                   title
-                items(limit: 100, page:1) {
-                    id
-                    name
-                }
+                items_page(limit: 100, page:1) {
+                    cursor
+                    items{
+                        id
+                        name
+                    }
                 }
               }
             }';
