@@ -4,7 +4,7 @@ namespace Gponty\MondayBundle;
 
 class MondayApi
 {
-    public function __construct(private readonly string $mondayApiKey, private readonly string $mondayApiVersion)
+    public function __construct(private readonly string $mondayApiKey)
     {
     }
 
@@ -22,7 +22,7 @@ class MondayApi
         $headers = [
             'Content-Type: application/json',
             'User-Agent: Github.com/symfony-monday-api',
-            'API-Version: '.$this->mondayApiVersion,
+            'API-Version: 2023-10',
             'Authorization: '.$this->mondayApiKey,
         ];
 
@@ -110,7 +110,7 @@ class MondayApi
     }
 
     /**
-     * Create new item if not exists.
+     * Create new item if not exists, key is column name.
      *
      * @param int    $boardId    Monday board id
      * @param string $groupId    Monday group id
@@ -122,15 +122,21 @@ class MondayApi
     public function createItem(int $boardId, string $groupId, string $itemName, array $itemValues): string|bool
     {
         // On insere ou update dans Monday
-        // On recuperer tous les items et groupes pour checker que l'item existe ou pas
+        // On check si l'item existe ou pas
         $query = '{
                   boards(ids: '.$boardId.') {
                     id
                     name
-                    groups(ids: '.$groupId.') {
+                    groups(ids: "'.$groupId.'") {
                       id
                       title
-                      items {id name}
+                        items_page(query_params: {rules: [{column_id: "name", compare_value: ["'.$itemName.'"]}], operator: and}){
+                            cursor
+                            items {
+                                id
+                                name
+                            }
+                       }
                     }
                   }
                 }
@@ -139,25 +145,15 @@ class MondayApi
         if (false === $responseContent) {
             return false;
         }
-        if (!isset($responseContent['boards'][0]['groups'][0]['items']) || !\is_array($responseContent['boards'][0]['groups'][0]['items'])) {
+        if (!isset($responseContent['boards'][0]['groups'][0]['items_page']['items']) || !\is_array($responseContent['boards'][0]['groups'][0]['items_page']['items'])) {
             return false;
         }
-        $items = $responseContent['boards'][0]['groups'][0]['items'];
+        $items = $responseContent['boards'][0]['groups'][0]['items_page']['items'];
 
-        // On créé les domaines qui n'existent pas
+        // On créé les items qui n'existent pas
         // et on met à jour ceux qui existent
-        $trouve = false;
-        $itemId = 0;
 
-        foreach ($items as $item) {
-            if ($item['name'] === $itemName) {
-                $trouve = true;
-                $itemId = $item['id'];
-                break;
-            }
-        }
-
-        if (!$trouve) {
+        if (\count($items) === 0) {
             $query = 'mutation {
                               create_item(board_id: '.$boardId.', group_id: "'.$groupId.'", item_name: "'.$itemName.'") {
                                 id
@@ -172,6 +168,8 @@ class MondayApi
                 return false;
             }
             $itemId = $data['create_item']['id'];
+        } else {
+            $itemId = $items[0]['id'];
         }
 
         // On met à jour
