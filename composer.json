@@ -4,9 +4,9 @@
   "type": "symfony-bundle",
   "require": {
     "php": ">=8.1",
-    "symfony/http-kernel": "^6.3",
-    "symfony/config": "^6.3",
-    "symfony/dependency-injection": "^6.3"
+    "symfony/http-kernel": "^6.4|^7.0",
+    "symfony/config": "^6.4|^7.0",
+    "symfony/dependency-injection": "^6.4|^7.0"
   },
   "keywords": ["symfony", "monday", "api", "bundle"],
   "homepage": "https://github.com/gponty/symfony-monday-api",
