@@ -26,11 +26,17 @@ class MondayApi
             'Authorization: '.$this->mondayApiKey,
         ];
 
+        if($variables === []) {
+            $content = ['query' => $query];
+        } else {
+            $content = ['query' => $query, 'variables' => $variables];
+        }
+
         $data = \file_get_contents($apiUrl, false, \stream_context_create([
             'http' => [
                 'method' => 'POST',
                 'header' => $headers,
-                'content' => \json_encode(['query' => $query, 'variables' => $variables]),
+                'content' => \json_encode($content),
             ],
         ]));
 
