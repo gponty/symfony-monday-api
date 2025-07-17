@@ -2,7 +2,6 @@
   "name": "gponty/symfony-monday-api-bundle",
   "description": "Service to use api Monday.com in Symfony",
   "type": "symfony-bundle",
-  "version": "dev-main",
   "require": {
     "php": ">=8.1",
     "symfony/http-kernel": "^6.4|^7.0",
