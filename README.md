@@ -1,62 +1,59 @@
-# Symfony Monday Api
+# Symfony Monday API
 
-This is a Symfony 6/7 Bundle helps you to use monday API v2 : https://developer.monday.com/apps/docs/mondayapi.
-It use version 2023-10.
+This is a Symfony 6/7 Bundle that helps you use the Monday.com API v2:  
+https://developer.monday.com/apps/docs/mondayapi  
+It uses version `2023-10` of the API.
 
 ## Installation
 
-**1** Add to composer.json to the `require` key
+Install the package via Composer:
 
-``` shell
-    composer require gponty/symfony-monday-api-bundle
+```bash
+composer require gponty/symfony-monday-api-bundle
 ```
-
-**2** Add to local .env file
-
-``` shell
-    MONDAY_API_KEY=your_token
-    
-```
-
-**3** Add to framework config file config/packages/framework.yml
-
-``` shell
-monday:
-    api_key: '%env(MONDAY_API_KEY)%'
-```
-
 
 ## Usage
 
-Inject the service in your controller :
+Inject the service into your controller:
 
-``` php
-    public function __construct(readonly MondayApiService $mondayApiService)
-    { }
+```php
+public function __construct(
+    readonly MondayApiService $mondayApiService
+) {}
 ```
 
-Use the service :
+Use the service like this:
 
-``` php
-    $query = '{
-              boards(ids: 123456789) {
-                id
-                name
-                groups {
-                  id
-                  title
-                items_page(limit: 100, page:1) {
-                    cursor
-                    items{
-                        id
-                        name
-                    }
+```php
+$query = '{
+    boards(ids: 123456789) {
+        id
+        name
+        groups {
+            id
+            title
+            items_page(limit: 100, page: 1) {
+                cursor
+                items {
+                    id
+                    name
                 }
-              }
-            }';
-    $response = $this->mondayApiService->request($query);
+            }
+        }
+    }
+}';
+
+$this->mondayApiService->setApiKey('your-api-key-here');
+$response = $this->mondayApiService->request($query);
 ```
+
+## Changelog
+
+### Version 1.0.7
+
+You must now call `setApiKey()` before using the `request()` method.  
+You MUST also remove the `config/packages/monday.yaml` file if it exists.
 
 ## License
 
-This bundle is under the MIT license. See the complete license in the bundle.
+This bundle is released under the MIT License. See the LICENSE file for more information.

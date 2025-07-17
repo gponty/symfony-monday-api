@@ -4,41 +4,52 @@ namespace Gponty\MondayBundle;
 
 class MondayApi
 {
-    public function __construct(private readonly string $mondayApiKey)
+    private string $apiKey = '';
+
+    public function __construct()
     {
     }
 
     /**
-     * Send request to monday.com API.
-     *
-     * @param string $query     GraphQL query
-     * @param array  $variables GraphQL variables
-     *
-     * @return bool|array Array of data or false if error
+     * Set the API key.
      */
-    public function request(string $query, array $variables = []): bool|array
+    public function setApiKey(string $apiKey): void
+    {
+        $this->apiKey = $apiKey;
+    }
+
+    /**
+     * Send a GraphQL request to the Monday.com API.
+     *
+     * @param string $query     GraphQL query string
+     * @param array  $variables Optional GraphQL variables
+     *
+     * @return array|false The API response or false on failure
+     */
+    public function request(string $query, array $variables = []): array|false
     {
         $apiUrl = 'https://api.monday.com/v2';
         $headers = [
             'Content-Type: application/json',
             'User-Agent: Github.com/symfony-monday-api',
             'API-Version: 2023-10',
-            'Authorization: '.$this->mondayApiKey,
+            'Authorization: '.$this->apiKey,
         ];
 
-        if($variables === []) {
-            $content = ['query' => $query];
-        } else {
-            $content = ['query' => $query, 'variables' => $variables];
+        $payload = ['query' => $query];
+        if (!empty($variables)) {
+            $payload['variables'] = $variables;
         }
 
-        $data = \file_get_contents($apiUrl, false, \stream_context_create([
+        $context = \stream_context_create([
             'http' => [
                 'method' => 'POST',
-                'header' => $headers,
-                'content' => \json_encode($content),
+                'header' => \implode("\r\n", $headers),
+                'content' => \json_encode($payload),
             ],
-        ]));
+        ]);
+
+        $data = \file_get_contents($apiUrl, false, $context);
 
         if (!$data) {
             return false;
@@ -49,261 +60,231 @@ class MondayApi
             return false;
         }
 
-        if (isset($json['data'])) {
-            return $json['data'];
-        } elseif (isset($json['errors']) && \is_array($json['errors'])) {
-            return $json['errors'];
-        }
-
-        return false;
+        return $json['data'] ?? $json['errors'] ?? false;
     }
 
     /**
-     * Create new group if not exists.
+     * Create a group if it doesn't exist yet.
      *
-     * @param int    $boardId    Monday board id
-     * @param string $groupTitle Group title
+     * @param int    $boardId    The board ID
+     * @param string $groupTitle The group title to create or retrieve
      *
-     * @return string|bool Group id or false if error
+     * @return string|false Group ID or false if error
      */
-    public function createGroup(int $boardId, string $groupTitle): string|bool
+    public function createGroup(int $boardId, string $groupTitle): string|false
     {
-        // check if group already exists
-        $query = '{
-                      boards(ids: '.$boardId.') {
-                        groups {
-                          id
-                          title
-                        }
-                      }
-                    }
-                ';
-
-        $responseContent = $this->request($query);
-        if (false === $responseContent) {
-            return false;
-        }
-        if (!isset($responseContent['boards'][0]['groups']) || !\is_array($responseContent['boards'][0]['groups'])) {
-            return false;
-        }
-
-        $idGroupe = null;
-        foreach ($responseContent['boards'][0]['groups'] as $group) {
-            if ($group['title'] === $groupTitle) {
-                $idGroupe = $group['id'];
-            }
-        }
-
-        // create group if not exists
-        if (null === $idGroupe) {
-            $query = 'mutation {
-                          create_group (board_id: '.$boardId.', group_name: "'.$groupTitle.'") {
-                            id
-                          }
-                        }
-                        ';
-            $responseContent = $this->request($query);
-            if (false === $responseContent) {
-                return false;
-            }
-            if (!isset($responseContent['create_group']['id'])) {
-                return false;
-            }
-            $idGroupe = $responseContent['create_group']['id'];
-        }
-
-        return $idGroupe;
-    }
-
-    /**
-     * Create new item if not exists, key is column name.
-     *
-     * @param int    $boardId    Monday board id
-     * @param string $groupId    Monday group id
-     * @param string $itemName   Item name
-     * @param array  $itemValues Item values
-     *
-     * @return string|bool Item id or false if error
-     */
-    public function createItem(int $boardId, string $groupId, string $itemName, array $itemValues): string|bool
-    {
-        // On insere ou update dans Monday
-        // On check si l'item existe ou pas
-        $query = '{
-                  boards(ids: '.$boardId.') {
+        $query = <<<GRAPHQL
+        {
+            boards(ids: $boardId) {
+                groups {
                     id
-                    name
-                    groups(ids: "'.$groupId.'") {
-                      id
-                      title
-                        items_page(query_params: {rules: [{column_id: "name", compare_value: ["'.$itemName.'"]}], operator: and}){
-                            cursor
-                            items {
-                                id
-                                name
-                            }
-                       }
-                    }
-                  }
+                    title
                 }
-            ';
-        $responseContent = $this->request($query);
-        if (false === $responseContent) {
-            return false;
-        }
-        if (!isset($responseContent['boards'][0]['groups'][0]['items_page']['items']) || !\is_array($responseContent['boards'][0]['groups'][0]['items_page']['items'])) {
-            return false;
-        }
-        $items = $responseContent['boards'][0]['groups'][0]['items_page']['items'];
-
-        // On créé les items qui n'existent pas
-        // et on met à jour ceux qui existent
-
-        if (\count($items) === 0) {
-            $query = 'mutation {
-                              create_item(board_id: '.$boardId.', group_id: "'.$groupId.'", item_name: "'.$itemName.'") {
-                                id
-                              }
-                            }
-                        ';
-            $data = $this->request($query);
-            if (false === $data) {
-                return false;
             }
-            if (!isset($data['create_item']['id'])) {
-                return false;
-            }
-            $itemId = $data['create_item']['id'];
-        } else {
-            $itemId = $items[0]['id'];
         }
+        GRAPHQL;
 
-        // On met à jour
-        $json = $this->encodeValueMutation($itemValues);
-        if (false === $json) {
+        $data = $this->request($query);
+        if (!$data || !isset($data['boards'][0]['groups'])) {
             return false;
         }
 
-        $query = 'mutation {
-                          change_multiple_column_values(item_id: '.$itemId.', board_id: '.$boardId.', column_values: "'.$json.'",create_labels_if_missing: true) {
+        foreach ($data['boards'][0]['groups'] as $group) {
+            if ($group['title'] === $groupTitle) {
+                return $group['id'];
+            }
+        }
+
+        // Group does not exist, create it
+        $mutation = <<<GRAPHQL
+        mutation {
+            create_group(board_id: $boardId, group_name: "{$this->escape($groupTitle)}") {
+                id
+            }
+        }
+        GRAPHQL;
+
+        $response = $this->request($mutation);
+
+        return $response['create_group']['id'] ?? false;
+    }
+
+    /**
+     * Create or update an item based on its name.
+     *
+     * @param int    $boardId    Board ID
+     * @param string $groupId    Group ID
+     * @param string $itemName   Item name (must be unique in the group)
+     * @param array  $itemValues Array of column values
+     *
+     * @return string|false The item ID or false on failure
+     */
+    public function createItem(int $boardId, string $groupId, string $itemName, array $itemValues): string|false
+    {
+        $escapedItemName = $this->escape($itemName);
+
+        $query = <<<GRAPHQL
+        {
+            boards(ids: $boardId) {
+                groups(ids: "$groupId") {
+                    items_page(query_params: {
+                        rules: [{ column_id: "name", compare_value: ["$escapedItemName"] }],
+                        operator: and
+                    }) {
+                        items {
                             id
-                          }
+                            name
                         }
-                        ';
-        $this->request($query);
+                    }
+                }
+            }
+        }
+        GRAPHQL;
+
+        $response = $this->request($query);
+        if (!$response || empty($response['boards'][0]['groups'][0]['items_page']['items'])) {
+            // Item not found, create it
+            $mutation = <<<GRAPHQL
+            mutation {
+                create_item(board_id: $boardId, group_id: "$groupId", item_name: "$escapedItemName") {
+                    id
+                }
+            }
+            GRAPHQL;
+
+            $createData = $this->request($mutation);
+            $itemId = $createData['create_item']['id'] ?? null;
+        } else {
+            $itemId = $response['boards'][0]['groups'][0]['items_page']['items'][0]['id'];
+        }
+
+        if (!$itemId) {
+            return false;
+        }
+
+        $json = $this->encodeValueMutation($itemValues);
+        if ($json === false) {
+            return false;
+        }
+
+        // Update item column values
+        $mutation = <<<GRAPHQL
+        mutation {
+            change_multiple_column_values(
+                item_id: $itemId,
+                board_id: $boardId,
+                column_values: "$json",
+                create_labels_if_missing: true
+            ) {
+                id
+            }
+        }
+        GRAPHQL;
+
+        $this->request($mutation);
 
         return $itemId;
     }
 
     /**
-     * Create new subitem if not exists.
+     * Create or update a subitem based on its name.
      *
-     * @param int    $boardId       Monday board id
-     * @param string $itemId        Monday item id
+     * @param int    $boardId       Parent board ID
+     * @param string $itemId        Parent item ID
      * @param string $subItemName   Subitem name
-     * @param array  $subItemValues Subitem values
+     * @param array  $subItemValues Column values
      *
-     * @return string|bool Subitem id or false if error
+     * @return string|false Subitem ID or false on failure
      */
-    public function createSubItem(int $boardId, string $itemId, string $subItemName, array $subItemValues): string|bool
+    public function createSubItem(int $boardId, string $itemId, string $subItemName, array $subItemValues): string|false
     {
-        // On insere ou update dans Monday
-        // On recuperer tous les subitems et groupes pour checker que le subitem existe ou pas
-        $query = '{
-                    items (ids: ['.$itemId.']) {
-                        id
-                        name
-                        subitems {
-                            id
-                            name
-                            column_values {
-                                id
-                                value
-                                text
-                              }
-                              board{
-                                    id
-                                }
-                        }
-                    }
-                }
-            ';
-        $responseContent = $this->request($query);
-        if (false === $responseContent) {
-            return false;
-        }
-        if (!isset($responseContent['items'][0]['subitems']) || !\is_array($responseContent['items'][0]['subitems'])) {
-            return false;
-        }
-        $subItems = $responseContent['items'][0]['subitems'];
+        $escapedSubItemName = $this->escape($subItemName);
 
-        // On créé les domaines qui n'existent pas
-        // et on met à jour ceux qui existent
-        $trouve = false;
-        $subItemId = 0;
+        $query = <<<GRAPHQL
+        {
+            items(ids: [$itemId]) {
+                subitems {
+                    id
+                    name
+                    board { id }
+                }
+            }
+        }
+        GRAPHQL;
+
+        $response = $this->request($query);
+        $subItems = $response['items'][0]['subitems'] ?? [];
+
         foreach ($subItems as $subItem) {
             if ($subItem['name'] === $subItemName) {
-                $trouve = true;
                 $subItemId = $subItem['id'];
-                // Les subitems se trouvent dans un autre boardid
-                $tableau = $subItem['board']['id'];
-                break;
+                $boardId = $subItem['board']['id'];
+                goto update;
             }
         }
 
-        if (!$trouve) {
-            $query = 'mutation {
-                              create_subitem(parent_item_id: '.$itemId.', item_name: "'.$subItemName.'") {
-                                id
-                                board{
-                                    id
-                                }
-                              }
-                            }
-                        ';
-            $data = $this->request($query);
-            if (false === $data) {
-                return false;
+        // Subitem not found, create it
+        $mutation = <<<GRAPHQL
+        mutation {
+            create_subitem(parent_item_id: $itemId, item_name: "$escapedSubItemName") {
+                id
+                board { id }
             }
-            if (!isset($data['create_subitem']['id']) || !isset($data['create_subitem']['board']['id'])) {
-                return false;
-            }
-
-            $subItemId = $data['create_subitem']['id'];
-            $tableau = $data['create_subitem']['board']['id'];
         }
+        GRAPHQL;
 
-        // On met à jour
-        $json = $this->encodeValueMutation($subItemValues);
-        if (false === $json) {
+        $data = $this->request($mutation);
+        if (!$data || !isset($data['create_subitem']['id'], $data['create_subitem']['board']['id'])) {
             return false;
         }
 
-        $query = 'mutation {
-                          change_multiple_column_values( board_id: '.$boardId.', item_id: '.$subItemId.', column_values: "'.$json.'",create_labels_if_missing: true) {
-                            id
-                          }
-                        }
-                        ';
-        $this->request($query);
+        $subItemId = $data['create_subitem']['id'];
+        $boardId = $data['create_subitem']['board']['id'];
+
+        update:
+
+        $json = $this->encodeValueMutation($subItemValues);
+        if ($json === false) {
+            return false;
+        }
+
+        $mutation = <<<GRAPHQL
+        mutation {
+            change_multiple_column_values(
+                item_id: $subItemId,
+                board_id: $boardId,
+                column_values: "$json",
+                create_labels_if_missing: true
+            ) {
+                id
+            }
+        }
+        GRAPHQL;
+
+        $this->request($mutation);
 
         return $subItemId;
     }
 
     /**
-     * Encode array to json Monday.
+     * Encode values for the `column_values` GraphQL mutation.
      *
-     * @param array $values Values to encode
+     * @param array $values The values to encode
      *
-     * @return bool|string Json encoded or false if error
+     * @return string|false Escaped JSON string or false on failure
      */
-    private function encodeValueMutation(array $values): bool|string
+    private function encodeValueMutation(array $values): string|false
     {
         $encodedValue = \json_encode($values);
-        if (!$encodedValue) {
-            return false;
-        }
 
-        return \addslashes($encodedValue);
+        return $encodedValue ? \addslashes($encodedValue) : false;
+    }
+
+    /**
+     * Escape GraphQL string value.
+     */
+    private function escape(string $value): string
+    {
+        return \addslashes($value);
     }
 }

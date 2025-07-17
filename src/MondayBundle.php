@@ -9,23 +9,19 @@ use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
 
 class MondayBundle extends AbstractBundle
 {
+    /**
+     * Configure the bundle's service container.
+     */
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
-        $container->import('../config/services.yml');
-
-        $container->services()
-            ->get(MondayApi::class)
-            ->arg('$mondayApiKey', $config['api_key'])
-        ;
+        // Add your service definitions or parameters here if needed
     }
 
+    /**
+     * Define configuration structure (if needed).
+     */
     public function configure(DefinitionConfigurator $definition): void
     {
-        // if the configuration is short, consider adding it in this class
-        $definition->rootNode()
-            ->children()
-            ->scalarNode('api_key')->defaultValue('%env(MONDAY_API_KEY)%')->end()
-            ->end()
-        ;
+        // Define configuration tree if needed
     }
 }
