@@ -14,7 +14,12 @@ class MondayBundle extends AbstractBundle
      */
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
-        // Add your service definitions or parameters here if needed
+        $services = $container->services();
+        $services
+            ->set(MondayApi::class)
+            ->autowire()
+            ->autoconfigure()
+            ->public(); // optionnel
     }
 
     /**
