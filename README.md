@@ -1,6 +1,6 @@
 # Symfony Monday API
 
-This is a Symfony 6/7 Bundle that helps you use the Monday.com API v2:  
+This is a Symfony 6/7/8 Bundle that helps you use the Monday.com API v2:  
 https://developer.monday.com/apps/docs/mondayapi  
 It uses version `2023-10` of the API.
 
