@@ -54,7 +54,7 @@ try {
 
 ## Changelog
 
-### Version 1.21
+### Version 2.0.0
 
 `request()` now throws a `MondayApiException` when the API cannot be reached or
 answers with an HTTP error status (4xx/5xx), instead of a bare PHP warning that
