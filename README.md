@@ -44,10 +44,25 @@ $query = '{
 }';
 
 $this->mondayApiService->setApiKey('your-api-key-here');
-$response = $this->mondayApiService->request($query);
+try {
+    $response = $this->mondayApiService->request($query);
+} catch (MondayApiException $e) {
+    // $e->getMessage() carries the HTTP status and the reason given by Monday.com,
+    // $e->getStatusCode(), $e->getResponseBody() and $e->getQuery() give the details
+}
 ```
 
 ## Changelog
+
+### Version 1.21
+
+`request()` now throws a `MondayApiException` when the API cannot be reached or
+answers with an HTTP error status (4xx/5xx), instead of a bare PHP warning that
+lost the response body. The exception message carries the HTTP status, the error
+message returned by Monday.com and the beginning of the query; the raw body,
+status and query are available through its getters. `createGroup()`,
+`createItem()` and `createSubItem()` propagate it. Successful responses are
+handled as before.
 
 ### Version 1.0.7
 
